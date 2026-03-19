@@ -101,6 +101,12 @@
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Firebase Realtime Database (compat SDK) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="firebase-service.js"></script>
 </head>
 
 <body>
@@ -126,6 +132,7 @@
     <div class="sidebar">
       <h2>📅 Meeting Hub</h2>
       <div class="muted" id="authUserLabel" style="margin-top:6px;font-size:12px">-</div>
+      <div id="fbStatusBadge" style="font-size:11px;margin-top:4px;color:#6b7280">🔥 Firebase</div>
       <button data-section="dashboard">Dashboard</button>
       <button data-section="calendar">ปฏิทินการประชุม</button>
       <button data-section="createMeeting">เพิ่มการประชุม</button>
@@ -336,6 +343,7 @@
     let deptChart = null;
     let calendarState = { year: new Date().getFullYear(), month: new Date().getMonth() }; // month: 0-11
     let calModalState = { type: 'day', dateKey: '', meetingId: null };
+    let _fbSyncing = false; // prevents write-back loop when Firebase listener fires
 
     const USERS_KEY = 'mh_users_v1';
     const SESSION_KEY = 'mh_session_v1';
@@ -383,6 +391,33 @@
       showSection('dashboard');
       updateAuthUserLabel();
       syncMeetingsToServer();
+
+      // Firebase real-time listeners
+      if (typeof firebaseAttachListeners === 'function') {
+        // If Firebase is empty, upload localStorage data on first sync
+        if (typeof firebaseInitialSync === 'function') {
+          firebaseInitialSync(meetings, employees);
+        }
+
+        firebaseAttachListeners(
+          (fbMeetings) => {
+            _fbSyncing = true;
+            meetings = fbMeetings;
+            localStorage.setItem('meetings', JSON.stringify(meetings));
+            updateDashboard();
+            renderCalendarMonth();
+            _fbSyncing = false;
+          },
+          (fbEmployees) => {
+            _fbSyncing = true;
+            employees = fbEmployees;
+            localStorage.setItem('employees', JSON.stringify(employees));
+            renderEmployeeList();
+            updateDashboard();
+            _fbSyncing = false;
+          }
+        );
+      }
 
       // เช็คเตือนทุก 1 นาที
       setInterval(checkReminder, 60000);
@@ -531,6 +566,7 @@
 
     function logout() {
       if (!confirm('ต้องการออกจากระบบหรือไม่?')) return;
+      if (typeof firebaseDetachListeners === 'function') firebaseDetachListeners();
       sessionStorage.removeItem(SESSION_KEY);
       // กัน timer เก่าซ้ำ (รีเฟรชหน้าแล้วค่อยล็อกอินใหม่ดีที่สุด)
       location.reload();
@@ -836,6 +872,11 @@
     function saveData() {
       localStorage.setItem('employees', JSON.stringify(employees));
       localStorage.setItem('meetings', JSON.stringify(meetings));
+      if (!_fbSyncing) {
+        if (typeof updateFirebaseStatusBadge === 'function') updateFirebaseStatusBadge('syncing');
+        if (typeof firebaseSaveMeetings === 'function') firebaseSaveMeetings(meetings);
+        if (typeof firebaseSaveEmployees === 'function') firebaseSaveEmployees(employees);
+      }
       syncMeetingsToServer();
     }
 
