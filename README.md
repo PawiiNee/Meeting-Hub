@@ -1,72 +1,101 @@
-# Meeting Hub LINE Server
+# vary
 
-เซิร์ฟเวอร์ตัวกลางสำหรับส่งข้อความไป LINE อย่างปลอดภัย (ไม่เก็บ Token ไว้ในหน้าเว็บ)
+[![NPM Version][npm-image]][npm-url]
+[![NPM Downloads][downloads-image]][downloads-url]
+[![Node.js Version][node-version-image]][node-version-url]
+[![Build Status][travis-image]][travis-url]
+[![Test Coverage][coveralls-image]][coveralls-url]
 
-## วิธีรัน
+Manipulate the HTTP Vary header
 
-1) ติดตั้ง dependencies
+## Installation
 
-```bash
-cd server
-npm install
+This is a [Node.js](https://nodejs.org/en/) module available through the
+[npm registry](https://www.npmjs.com/). Installation is done using the
+[`npm install` command](https://docs.npmjs.com/getting-started/installing-npm-packages-locally): 
+
+```sh
+$ npm install vary
 ```
 
-2) สร้างไฟล์ `.env`
+## API
 
-- คัดลอก `.env.example` เป็น `.env`
-- ใส่ค่า `LINE_CHANNEL_ACCESS_TOKEN` และ `LINE_TO_USER_ID`
+<!-- eslint-disable no-unused-vars -->
 
-3) รันเซิร์ฟเวอร์
-
-```bash
-npm start
+```js
+var vary = require('vary')
 ```
 
-เซิร์ฟเวอร์จะเปิดที่ `http://localhost:3001`
+### vary(res, field)
 
-## ทดสอบ
+Adds the given header `field` to the `Vary` response header of `res`.
+This can be a string of a single field, a string of a valid `Vary`
+header, or an array of multiple fields.
 
-- เปิดหน้าเว็บผ่านเซิร์ฟเวอร์: `http://localhost:3001`
-- (ไม่แนะนำเปิดผ่าน `file://` เพราะบางเครื่อง/เบราว์เซอร์จะบล็อกบางฟีเจอร์)
-- ไปที่เมนู `ตั้งค่า`
-- Server URL: `http://localhost:3001`
-- ติ๊ก “เปิดใช้การส่งแจ้งเตือนไป LINE”
-- กด “ทดสอบส่ง”
+This will append the header if not already listed, otherwise leaves
+it listed in the current location.
 
-## ขอ LINE userId (U...) ของตัวเอง
+<!-- eslint-disable no-undef -->
 
-> LINE จะยิง webhook มาจากอินเทอร์เน็ต ดังนั้น `localhost` ใช้ตรง ๆ ไม่ได้ ต้องใช้ URL สาธารณะ เช่น **ngrok**
-
-1) รันเซิร์ฟเวอร์ (พอร์ต 3001)
-2) เปิด tunnel ด้วย ngrok:
-
-```bash
-ngrok http 3001
+```js
+// Append "Origin" to the Vary header of the response
+vary(res, 'Origin')
 ```
 
-3) เอา URL ที่ ngrok ให้ (เช่น `https://xxxx.ngrok-free.app`) ไปใส่ใน LINE Developers → Messaging API → Webhook URL:
+### vary.append(header, field)
 
-- `https://xxxx.ngrok-free.app/api/line/webhook`
-- เปิด Use webhooks
+Adds the given header `field` to the `Vary` response header string `header`.
+This can be a string of a single field, a string of a valid `Vary` header,
+or an array of multiple fields.
 
-4) แอด OA เป็นเพื่อน แล้วส่งข้อความหา OA 1 ข้อความ
-5) เปิดดู `http://localhost:3001/api/line/last-seen` จะเห็น `userId` จริง (ขึ้นต้นด้วย `U...`)
+This will append the header if not already listed, otherwise leaves
+it listed in the current location. The new header string is returned.
 
-## Endpoint
+<!-- eslint-disable no-undef -->
 
-- `POST /api/line/push`
-  - body: `{ "message": "ข้อความ" }`
+```js
+// Get header string appending "Origin" to "Accept, User-Agent"
+vary.append('Accept, User-Agent', 'Origin')
+```
 
-## แจ้งเตือน LINE ทุกวัน 08:00
+## Examples
 
-เซิร์ฟเวอร์จะส่งข้อความอัตโนมัติทุกวันตอน `08:00` ถ้า `.env` ตั้งค่า `LINE_CHANNEL_ACCESS_TOKEN` และ `LINE_TO_USER_ID` ไว้แล้ว
+### Updating the Vary header when content is based on it
 
-ค่าเริ่มต้น:
-- เวลา: `08:00`
-- ข้อความ: `แจ้งเตือนอัตโนมัติเวลา 08:00 น. จาก Meeting Hub`
+```js
+var http = require('http')
+var vary = require('vary')
 
-ปรับแต่งผ่าน `.env` ได้ด้วยตัวแปร:
-- `LINE_DAILY_REMINDER_HH` (ค่าเลขชั่วโมง, ค่าเริ่มต้น `8`)
-- `LINE_DAILY_REMINDER_MM` (ค่านาที, ค่าเริ่มต้น `0`)
-- `LINE_DAILY_REMINDER_MESSAGE` (ข้อความที่ส่ง)
+http.createServer(function onRequest (req, res) {
+  // about to user-agent sniff
+  vary(res, 'User-Agent')
 
+  var ua = req.headers['user-agent'] || ''
+  var isMobile = /mobi|android|touch|mini/i.test(ua)
+
+  // serve site, depending on isMobile
+  res.setHeader('Content-Type', 'text/html')
+  res.end('You are (probably) ' + (isMobile ? '' : 'not ') + 'a mobile user')
+})
+```
+
+## Testing
+
+```sh
+$ npm test
+```
+
+## License
+
+[MIT](LICENSE)
+
+[npm-image]: https://img.shields.io/npm/v/vary.svg
+[npm-url]: https://npmjs.org/package/vary
+[node-version-image]: https://img.shields.io/node/v/vary.svg
+[node-version-url]: https://nodejs.org/en/download
+[travis-image]: https://img.shields.io/travis/jshttp/vary/master.svg
+[travis-url]: https://travis-ci.org/jshttp/vary
+[coveralls-image]: https://img.shields.io/coveralls/jshttp/vary/master.svg
+[coveralls-url]: https://coveralls.io/r/jshttp/vary
+[downloads-image]: https://img.shields.io/npm/dm/vary.svg
+[downloads-url]: https://npmjs.org/package/vary
