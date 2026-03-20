@@ -1,55 +1,40 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meeting Hub</title>
-    <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.1.2/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-database.js"></script>
+</head>
+<body>
+    <h1>Welcome to Meeting Hub</h1>
     <script>
         // Your web app's Firebase configuration
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            databaseURL: "YOUR_DATABASE_URL",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
             projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "SENDER_ID",
+            appId: "APP_ID"
         };
 
         // Initialize Firebase
         const app = firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
+        // Function to save data
         function saveData(data) {
-            const userId = getCurrentUserId(); // Assuming you have a way to get the current user ID
-            database.ref('users/' + userId).set(data)
-                .then(() => {
-                    console.log('Data saved to Firebase!');
-                })
-                .catch((error) => {
-                    console.error('Error saving data to Firebase:', error);
-                });
+            database.ref('data/').set(data);
         }
 
-        function initAfterLogin() {
-            const userId = getCurrentUserId(); // Assuming you have a way to get the current user ID
-            database.ref('users/' + userId).once('value').then((snapshot) => {
-                if (snapshot.exists()) {
-                    const data = snapshot.val();
-                    // Populate your fields with data
-                    console.log('Data loaded from Firebase:', data);
-                } else {
-                    console.log('No data available');
-                }
-            }).catch((error) => {
-                console.error('Error loading data from Firebase:', error);
+        // Function to load data
+        function loadData() {
+            database.ref('data/').once('value').then((snapshot) => {
+                const data = snapshot.val();
+                console.log(data);
             });
         }
     </script>
-</head>
-<body>
-    <!-- Body content goes here -->
 </body>
 </html>
